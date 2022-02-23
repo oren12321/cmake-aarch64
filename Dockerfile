@@ -59,9 +59,10 @@ WORKDIR /tmp
 RUN cd cmake-${CMAKE_VERSION} \
  && OPENSSL_ROOT_DIR=/usr/lib/x86_64-linux-gnu \
     CC=/tmp/${HVER}-native/bin/gcc \
-    CFLAGS="-static --static" \
+    CFLAGS="-static" \
     CXX=/tmp/${HVER}-native/bin/g++ \
-    CXXFLAGS="-static --static" \
+    CXXFLAGS="-static" \
+    LDFLAGS="--static" \
         ./bootstrap --parallel=$(nproc)
 
 WORKDIR /tmp
@@ -69,6 +70,10 @@ RUN ln -sf $(which g++) ${HVER}-native/bin/g++ \
  && ln -sf $(which gcc) ${HVER}-native/bin/gcc \
  && ln -sf $(which ld) ${HVER}-native/bin/ld \
  && ln -sf $(which strip) ${HVER}-native/bin/strip
+
+WORKDIR /tmp
+RUN cd /usr/lib/gcc/x86_64-linux-gnu/11 \
+ && cp crtbeginS.o crtbeginT.o
 
 WORKDIR /tmp
 RUN cd cmake-${CMAKE_VERSION} \
