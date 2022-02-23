@@ -7,7 +7,16 @@ RUN apt update && apt install -y --no-install-recommends \
         rename \
         libssl-dev \
         ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
+
+RUN apt update && apt install -y --no-install-recommends \
+        software-properties-common \
+ && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+ && apt update && apt install -y --no-install-recommends \
+        gcc-11 g++-11 \
+ && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 \
+        --slave /usr/bin/g++ g++ /usr/bin/g++-11 \
+ && rm -rf /var/lib/apt/lists/*
 
 ARG XMCM=aarch64-linux-musl
 ARG HVER=x86_64-linux-musl
@@ -46,21 +55,24 @@ RUN curl -so cmake-${CMAKE_VERSION}.tar.gz \
  && tar -xf cmake-${CMAKE_VERSION}.tar.gz \
  && rm cmake-${CMAKE_VERSION}.tar.gz
 
-#WORKDIR /tmp
-#RUN cd cmake-${CMAKE_VERSION} \
-# && CC=/tmp/${HVER}-native/bin/gcc \
-#    CFLAGS="-static --static" \
-#    CXX=/tmp/${HVER}-native/bin/g++ \
-#    CXXFLAGS="-static --static" \
-#        ./bootstrap --parallel=$(nproc)
+WORKDIR /tmp
+RUN cd cmake-${CMAKE_VERSION} \
+ && OPENSSL_ROOT_DIR=/usr/lib/x86_64-linux-gnu \
+    CC=/tmp/${HVER}-native/bin/gcc \
+    CFLAGS="-static --static" \
+    CXX=/tmp/${HVER}-native/bin/g++ \
+    CXXFLAGS="-static --static" \
+        ./bootstrap --parallel=$(nproc)
 
-#WORKDIR /tmp
-#RUN ln -sf $(which g++) ${HVER}-native/bin/g++ \
-# && ln -sf $(which gcc) ${HVER}-native/bin/gcc \
-# && ln -sf $(which ld) ${HVER}-native/bin/ld \
-# && ln -sf $(which strip) ${HVER}-native/bin/strip
+WORKDIR /tmp
+RUN ln -sf $(which g++) ${HVER}-native/bin/g++ \
+ && ln -sf $(which gcc) ${HVER}-native/bin/gcc \
+ && ln -sf $(which ld) ${HVER}-native/bin/ld \
+ && ln -sf $(which strip) ${HVER}-native/bin/strip
 
-#WORKDIR /tmp
-#RUN cd cmake-${CMAKE_VERSION} \
-# && make -j$(nproc)
+WORKDIR /tmp
+RUN cd cmake-${CMAKE_VERSION} \
+ && make -j$(nproc)
+
+# (ref: https://cmake.org/pipermail/cmake/2018-October/068467.html)
 
