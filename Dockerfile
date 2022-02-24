@@ -46,22 +46,19 @@ RUN curl -so ${XMCM}-cross.tgz https://musl.cc/${XMCM}-cross.tgz \
         chmod +x ${p}; \
     done
 
-ARG CMAKE_VERSION=3.22.1
+ARG CMAKE_VERSION=3.12.3
 
 WORKDIR /tmp
-RUN curl -so cmake-${CMAKE_VERSION}.tar.gz \
-        https://cmake.org/files/v$(echo ${CMAKE_VERSION} \
-            | awk -F'[.]' '{print $1 "." $2}')/cmake-${CMAKE_VERSION}.tar.gz \
- && tar -xf cmake-${CMAKE_VERSION}.tar.gz \
+RUN curl -Lso cmake-${CMAKE_VERSION}.tar.gz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz \
+ && tar -xzf cmake-${CMAKE_VERSION}.tar.gz \
  && rm cmake-${CMAKE_VERSION}.tar.gz
 
 WORKDIR /tmp
 RUN cd cmake-${CMAKE_VERSION} \
- && OPENSSL_ROOT_DIR=/usr/lib/x86_64-linux-gnu \
-    CC=/tmp/${HVER}-native/bin/gcc \
-    CFLAGS="-static" \
+ && CC=/tmp/${HVER}-native/bin/gcc \
+    CFLAGS="-static -pthread" \
     CXX=/tmp/${HVER}-native/bin/g++ \
-    CXXFLAGS="-static" \
+    CXXFLAGS="-static -pthread" \
     LDFLAGS="--static" \
         ./bootstrap --parallel=$(nproc)
 
