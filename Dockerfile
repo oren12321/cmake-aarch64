@@ -42,11 +42,11 @@ RUN curl -so ${XMCM}-cross.tgz https://musl.cc/${XMCM}-cross.tgz \
         [ ! -e ${p}.orig ] || continue \
         mv ${p} ${p}.orig \
         echo > ${p} '#!/bin/sh' \
-        echo >> ${p} "${k}.orig \${@} -static --static -g0 -s -O3" \
+        echo >> ${p} "${k}.orig \${@} -static --static -static-libgcc -static-libstdc++ -g0 -s -O3" \
         chmod +x ${p}; \
     done
 
-ARG CMAKE_VERSION=3.12.3
+ARG CMAKE_VERSION=3.22.1
 
 WORKDIR /tmp
 RUN curl -Lso cmake-${CMAKE_VERSION}.tar.gz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz \
@@ -56,10 +56,10 @@ RUN curl -Lso cmake-${CMAKE_VERSION}.tar.gz https://github.com/Kitware/CMake/rel
 WORKDIR /tmp
 RUN cd cmake-${CMAKE_VERSION} \
  && CC=/tmp/${HVER}-native/bin/gcc \
-    CFLAGS="-static --static" \
+    CFLAGS="-static --static -static-libgcc" \
     CXX=/tmp/${HVER}-native/bin/g++ \
-    CXXFLAGS="-static --static" \
-        ./bootstrap --parallel=$(nproc) -- -DCMAKE_INSTALL_PREFIX=/tmp/cmake_package
+    CXXFLAGS="-static --static -static-libstdc++" \
+        ./bootstrap --parallel=$(nproc) -- -DCMAKE_INSTALL_PREFIX=/tmp/cmake_package -DCMAKE_USE_OPENSSL=OFF
 
 WORKDIR /tmp
 RUN ln -sf /bin/g++ ${HVER}-native/bin/g++ \
