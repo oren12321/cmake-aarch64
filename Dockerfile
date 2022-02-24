@@ -3,9 +3,9 @@ FROM ubuntu:18.04
 RUN apt update && apt install -y --no-install-recommends \
         rsync \
         curl \
-        build-essential \
         rename \
         libssl-dev \
+        build-essential \
         ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
@@ -37,12 +37,12 @@ RUN curl -so ${XMCM}-cross.tgz https://musl.cc/${XMCM}-cross.tgz \
  && cd /bin \
  && XMCM=${XMCM} rename 's/$ENV{XMCM}\-//g' * \
  && for k in g++ gcc gfortran; do \
-        p=$(which ${k}) || true \
+        p=$(which /bin/${k}) || true \
         [ ! "x${p}" = "x" ] || continue \
         [ ! -e ${p}.orig ] || continue \
         mv ${p} ${p}.orig \
         echo > ${p} '#!/bin/sh' \
-        echo >> ${p} "${k}.orig \${@} -static --static -g0 -s -Os" \
+        echo >> ${p} "${k}.orig \${@} -static --static -g0 -s -O3" \
         chmod +x ${p}; \
     done
 
@@ -56,21 +56,20 @@ RUN curl -Lso cmake-${CMAKE_VERSION}.tar.gz https://github.com/Kitware/CMake/rel
 WORKDIR /tmp
 RUN cd cmake-${CMAKE_VERSION} \
  && CC=/tmp/${HVER}-native/bin/gcc \
-    CFLAGS="-static -pthread" \
+    CFLAGS="-static --static" \
     CXX=/tmp/${HVER}-native/bin/g++ \
-    CXXFLAGS="-static -pthread" \
-    LDFLAGS="--static" \
-        ./bootstrap --parallel=$(nproc)
+    CXXFLAGS="-static --static" \
+        ./bootstrap --parallel=$(nproc) -- -DCMAKE_INSTALL_PREFIX=/tmp/cmake_package
 
 WORKDIR /tmp
-RUN ln -sf $(which g++) ${HVER}-native/bin/g++ \
- && ln -sf $(which gcc) ${HVER}-native/bin/gcc \
- && ln -sf $(which ld) ${HVER}-native/bin/ld \
- && ln -sf $(which strip) ${HVER}-native/bin/strip
+RUN ln -sf /bin/g++ ${HVER}-native/bin/g++ \
+ && ln -sf /bin/gcc ${HVER}-native/bin/gcc \
+ && ln -sf /bin/ld ${HVER}-native/bin/ld \
+ && ln -sf /bin/strip ${HVER}-native/bin/strip
 
-WORKDIR /tmp
-RUN cd /usr/lib/gcc/x86_64-linux-gnu/11 \
- && cp crtbeginS.o crtbeginT.o
+#WORKDIR /tmp
+#RUN cd /usr/lib/gcc/x86_64-linux-gnu/11 \
+# && cp crtbeginS.o crtbeginT.o
 
 WORKDIR /tmp
 RUN cd cmake-${CMAKE_VERSION} \
