@@ -4,8 +4,9 @@ RUN apt update && apt install -y --no-install-recommends \
         rsync \
         curl \
         rename \
-        libssl-dev \
         build-essential \
+        checkinstall \
+        zlib1g-dev \
         ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
@@ -17,6 +18,17 @@ RUN apt update && apt install -y --no-install-recommends \
  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 \
         --slave /usr/bin/g++ g++ /usr/bin/g++-11 \
  && rm -rf /var/lib/apt/lists/*
+
+ARG OPENSSL_VERSION=1.1.1m
+WORKDIR /tmp
+RUN curl -so openssl-${OPENSSL_VERSION}.tar.gz https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz \
+ && tar -xf openssl-${OPENSSL_VERSION}.tar.gz \
+ && rm openssl-${OPENSSL_VERSION}.tar.gz \
+ && cd openssl-${OPENSSL_VERSION} \
+ && ./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl zlib \
+ && make -j$(nproc) \
+ && make test \
+ && make install
 
 ARG XMCM=aarch64-linux-musl
 ARG HVER=x86_64-linux-musl
@@ -42,7 +54,7 @@ RUN curl -so ${XMCM}-cross.tgz https://musl.cc/${XMCM}-cross.tgz \
         [ ! -e ${p}.orig ] || continue \
         mv ${p} ${p}.orig \
         echo > ${p} '#!/bin/sh' \
-        echo >> ${p} "${k}.orig \${@} -static --static -static-libgcc -static-libstdc++ -g0 -s -O3" \
+        echo >> ${p} "${k}.orig \${@} -static -static-libgcc -static-libstdc++ -g0 -s -O3" \
         chmod +x ${p}; \
     done
 
@@ -55,11 +67,12 @@ RUN curl -Lso cmake-${CMAKE_VERSION}.tar.gz https://github.com/Kitware/CMake/rel
 
 WORKDIR /tmp
 RUN cd cmake-${CMAKE_VERSION} \
- && CC=/tmp/${HVER}-native/bin/gcc \
-    CFLAGS="-static --static -static-libgcc" \
+ && OPENSSL_ROOT_DIR=/usr/local/ssl \
+    CC=/tmp/${HVER}-native/bin/gcc \
+    CFLAGS="-static -static-libgcc" \
     CXX=/tmp/${HVER}-native/bin/g++ \
-    CXXFLAGS="-static --static -static-libstdc++" \
-        ./bootstrap --parallel=$(nproc) -- -DCMAKE_INSTALL_PREFIX=/tmp/cmake_package -DCMAKE_USE_OPENSSL=OFF
+    CXXFLAGS="-static -static-libstdc++" \
+        ./bootstrap --parallel=$(nproc) -- -DCMAKE_INSTALL_PREFIX=/cross-cmake -DCMAKE_BUILD_TYPE=Release
 
 WORKDIR /tmp
 RUN ln -sf /bin/g++ ${HVER}-native/bin/g++ \
@@ -67,9 +80,9 @@ RUN ln -sf /bin/g++ ${HVER}-native/bin/g++ \
  && ln -sf /bin/ld ${HVER}-native/bin/ld \
  && ln -sf /bin/strip ${HVER}-native/bin/strip
 
-#WORKDIR /tmp
-#RUN cd /usr/lib/gcc/x86_64-linux-gnu/11 \
-# && cp crtbeginS.o crtbeginT.o
+WORKDIR /tmp
+RUN cd /usr/lib/gcc/x86_64-linux-gnu/11 \
+ && cp crtbeginS.o crtbeginT.o
 
 WORKDIR /tmp
 RUN cd cmake-${CMAKE_VERSION} \
