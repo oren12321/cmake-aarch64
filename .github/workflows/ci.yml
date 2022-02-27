@@ -58,7 +58,6 @@ jobs:
             CMAKE_AARCH64_TAG=${{ steps.prep.outputs.registry_url }}/${{ steps.prep.outputs.tagged_image }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: true
 
       - name: Test
         run: |
