@@ -9,12 +9,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-18.04
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
 
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
+        with:
+          driver-opts: network=host
 
       - name: Checkout code
         uses: actions/checkout@v2
@@ -24,33 +31,36 @@ jobs:
         run: |
           TAG=$(echo $GITHUB_SHA | head -c7)
           IMAGE=oren12321/cmake-aarch64
+          REGISTRY_URL=localhost:5000
           echo ::set-output name=latest_image::${IMAGE}:latest
           echo ::set-output name=tagged_image::${IMAGE}:${TAG}
+          echo ::set-output name=registry_url::${REGISTRY_URL}
 
       - name: Build
         uses: docker/build-push-action@v2
         with:
           context: .
-          push: false
-          tags: ${{ steps.prep.outputs.tagged_image }},${{ steps.prep.outputs.latest_image }}
+          push: true 
+          tags: |
+            ${{ steps.prep.outputs.registry_url }}/${{ steps.prep.outputs.tagged_image }}
+            ${{ steps.prep.outputs.registry_url }}/${{ steps.prep.outputs.latest_image }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: true
 
       - name: Build test
         uses: docker/build-push-action@v2
         with:
           context: .
           file: test.dockerfile
-          push: false
-          tags: oren12321/cmake-aarch64-test:latest
+          push: true
+          tags: ${{ steps.prep.outputs.registry_url }}/oren12321/cmake-aarch64-test:latest
           build-args: |
-            CMAKE_AARCH64_TAG=${{ steps.prep.outputs.tagged_image }}
+            CMAKE_AARCH64_TAG=${{ steps.prep.outputs.registry_url }}/${{ steps.prep.outputs.tagged_image }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           load: true
 
       - name: Test
         run: |
-          docker run --rm oren12321/cmake-aarch64-test:latest
+          docker run --rm ${{ steps.prep.outputs.registry_url }}/oren12321/cmake-aarch64-test:latest
 
